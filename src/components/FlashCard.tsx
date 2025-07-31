@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Word } from "@/data/languages";
 import { Volume2, RotateCcw, ArrowRight } from "lucide-react";
@@ -14,37 +14,73 @@ interface FlashCardProps {
 export const FlashCard = ({ word, onNext, isLastCard, currentCard, totalCards }: FlashCardProps) => {
   const [isFlipped, setIsFlipped] = useState(false);
   const [isAnimating, setIsAnimating] = useState(false);
+  const [voices, setVoices] = useState<SpeechSynthesisVoice[]>([]);
+
+  // Load voices when component mounts
+  useEffect(() => {
+    const loadVoices = () => {
+      const availableVoices = speechSynthesis.getVoices();
+      setVoices(availableVoices);
+      console.log('Available voices:', availableVoices.map(v => ({ name: v.name, lang: v.lang })));
+    };
+
+    if (speechSynthesis.onvoiceschanged !== undefined) {
+      speechSynthesis.onvoiceschanged = loadVoices;
+    }
+    loadVoices();
+  }, []);
 
   const playPronunciation = () => {
     if ('speechSynthesis' in window) {
-      // Cancel any ongoing speech
-      speechSynthesis.cancel();
-      
-      const utterance = new SpeechSynthesisUtterance(word.native);
-      
-      // Get available voices and select a child-like voice
-      const voices = speechSynthesis.getVoices();
-      const childVoice = voices.find(voice => 
-        voice.name.toLowerCase().includes('child') ||
-        voice.name.toLowerCase().includes('female') ||
-        voice.name.toLowerCase().includes('woman') ||
-        voice.name.toLowerCase().includes('karen') ||
-        voice.name.toLowerCase().includes('samantha')
-      ) || voices.find(voice => voice.lang.startsWith('en')) || voices[0];
-      
-      if (childVoice) {
-        utterance.voice = childVoice;
+      try {
+        // Cancel any ongoing speech
+        speechSynthesis.cancel();
+        
+        const utterance = new SpeechSynthesisUtterance(word.native);
+        console.log('Speaking word:', word.native);
+        
+        // Select best voice for child-like speech
+        const childVoice = voices.find(voice => 
+          voice.name.toLowerCase().includes('female') ||
+          voice.name.toLowerCase().includes('woman') ||
+          voice.name.toLowerCase().includes('samantha') ||
+          voice.name.toLowerCase().includes('karen') ||
+          voice.name.toLowerCase().includes('zira') ||
+          voice.name.toLowerCase().includes('susan')
+        ) || voices.find(voice => voice.lang.startsWith('en')) || voices[0];
+        
+        if (childVoice) {
+          utterance.voice = childVoice;
+          console.log('Using voice:', childVoice.name);
+        }
+        
+        // Child-like voice settings
+        utterance.rate = 0.6; // Slower speech
+        utterance.pitch = 1.5; // Higher pitch for child-like voice
+        utterance.volume = 1.0;
+        
+        // Error handling
+        utterance.onerror = (event) => {
+          console.error('Speech synthesis error:', event);
+        };
+        
+        utterance.onend = () => {
+          console.log('Speech finished');
+        };
+        
+        // Speak immediately if voices are loaded, otherwise wait
+        if (voices.length > 0) {
+          speechSynthesis.speak(utterance);
+        } else {
+          setTimeout(() => {
+            speechSynthesis.speak(utterance);
+          }, 500);
+        }
+      } catch (error) {
+        console.error('Error playing pronunciation:', error);
       }
-      
-      // Child-like voice settings
-      utterance.rate = 0.7; // Slower speech
-      utterance.pitch = 1.4; // Higher pitch for child-like voice
-      utterance.volume = 0.9;
-      
-      // Add some delay to ensure voices are loaded
-      setTimeout(() => {
-        speechSynthesis.speak(utterance);
-      }, 100);
+    } else {
+      console.error('Speech synthesis not supported');
     }
   };
 
