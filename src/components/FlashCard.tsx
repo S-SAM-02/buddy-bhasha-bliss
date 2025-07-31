@@ -17,10 +17,34 @@ export const FlashCard = ({ word, onNext, isLastCard, currentCard, totalCards }:
 
   const playPronunciation = () => {
     if ('speechSynthesis' in window) {
-      const utterance = new SpeechSynthesisUtterance(word.pronunciation);
-      utterance.rate = 0.8;
-      utterance.pitch = 1.1;
-      speechSynthesis.speak(utterance);
+      // Cancel any ongoing speech
+      speechSynthesis.cancel();
+      
+      const utterance = new SpeechSynthesisUtterance(word.native);
+      
+      // Get available voices and select a child-like voice
+      const voices = speechSynthesis.getVoices();
+      const childVoice = voices.find(voice => 
+        voice.name.toLowerCase().includes('child') ||
+        voice.name.toLowerCase().includes('female') ||
+        voice.name.toLowerCase().includes('woman') ||
+        voice.name.toLowerCase().includes('karen') ||
+        voice.name.toLowerCase().includes('samantha')
+      ) || voices.find(voice => voice.lang.startsWith('en')) || voices[0];
+      
+      if (childVoice) {
+        utterance.voice = childVoice;
+      }
+      
+      // Child-like voice settings
+      utterance.rate = 0.7; // Slower speech
+      utterance.pitch = 1.4; // Higher pitch for child-like voice
+      utterance.volume = 0.9;
+      
+      // Add some delay to ensure voices are loaded
+      setTimeout(() => {
+        speechSynthesis.speak(utterance);
+      }, 100);
     }
   };
 
